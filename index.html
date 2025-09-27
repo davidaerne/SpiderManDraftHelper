@@ -4,28 +4,29 @@
   <meta charset="utf-8" />
   <title>Marvel’s Spider-Man Limited Helper (SPM)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="description" content="SPM Limited helper: search cards, see images/links, and explore color-pair synergies." />
+  <meta name="description" content="SPM Limited helper: search cards, see images/links, explore synergies, and save picks." />
   <style>
     :root{
       --bg:#0b0f14; --panel:#121823; --muted:#93a0b0; --text:#e8edf5; --accent:#ff3b30; --chip:#1b2330;
-      --ok:#2ecc71; --warn:#f1c40f;
+      --ok:#2ecc71; --warn:#f1c40f; --line:#1f2a3a;
     }
     *{box-sizing:border-box}
     body{margin:0;background:var(--bg);color:var(--text);font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Helvetica,Arial}
-    header{padding:16px 20px;border-bottom:1px solid #1f2a3a;background:linear-gradient(180deg,#131a25,#0b0f14)}
+    header{padding:16px 20px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#131a25,#0b0f14)}
     h1{margin:0;font-size:20px;letter-spacing:.2px}
     .sub{color:var(--muted);font-size:12px;margin-top:6px}
     main{display:grid;grid-template-columns:380px 1fr;gap:18px;padding:18px;align-items:start}
     @media (max-width:980px){main{grid-template-columns:1fr}}
-    .card{background:var(--panel);border:1px solid #1f2a3a;border-radius:14px;box-shadow:0 6px 24px rgba(0,0,0,.25)}
+    .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:0 6px 24px rgba(0,0,0,.25)}
     .pad{padding:14px}
     .searchbar{display:flex;gap:8px}
-    input[type=search]{flex:1;padding:12px 12px;border:1px solid #2a3a51;background:#0e141d;color:var(--text);
-      border-radius:12px;outline:none}
+    input[type=search]{flex:1;padding:12px 12px;border:1px solid #2a3a51;background:#0e141d;color:var(--text);border-radius:12px;outline:none}
     button{background:var(--accent);border:none;color:white;padding:10px 12px;border-radius:10px;cursor:pointer;font-weight:600}
     button.secondary{background:#263349}
-    .results{max-height:60vh;overflow:auto;margin-top:10px;border-top:1px solid #1f2a3a}
-    .result{display:flex;gap:10px;padding:10px 6px;border-bottom:1px solid #1f2a3a;cursor:pointer}
+    button.ghost{background:transparent;border:1px solid #2a3a51;color:#b6c6da}
+    .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
+    .results{max-height:60vh;overflow:auto;margin-top:10px;border-top:1px solid var(--line)}
+    .result{display:flex;gap:10px;padding:10px 6px;border-bottom:1px solid var(--line);cursor:pointer}
     .result:hover{background:#0f1520}
     .thumb{width:50px;height:70px;object-fit:cover;border-radius:8px;border:1px solid #2a3a51}
     .small{font-size:12px;color:var(--muted)}
@@ -42,32 +43,47 @@
     .note{background:#0f1622;border:1px dashed #30435e;padding:10px;border-radius:12px;color:#bcd;}
     .sec-title{font-size:13px;color:#b7c6d8;text-transform:uppercase;letter-spacing:.12em;margin:10px 0 4px}
     .stat{display:inline-block;padding:2px 6px;border-radius:6px;border:1px solid #344760;background:#121a27;color:#a9c3e3;font-size:11px;margin-left:6px}
-    .foot{padding:16px 20px;color:#9cb1c8;font-size:12px;border-top:1px solid #1f2a3a}
+    .foot{padding:16px 20px;color:#9cb1c8;font-size:12px;border-top:1px solid var(--line)}
+    .gal{display:flex;flex-wrap:wrap;gap:10px}
+    .mini{display:flex;align-items:center;gap:8px;padding:6px 8px;border:1px solid #2a3a51;background:#0f1622;border-radius:10px}
+    .mini img{width:28px;height:40px;border-radius:5px;border:1px solid #2a3a51}
+    .mini .x{margin-left:6px;border:1px solid #394b66;border-radius:6px;padding:2px 6px;font-size:11px;color:#b7c6d8;background:#182232;cursor:pointer}
+    .bar-saved{display:flex;gap:8px;align-items:center;margin-top:10px}
+    .back-pill{display:none}
   </style>
 </head>
 <body>
 <header>
   <h1>Marvel’s Spider-Man Limited Helper <span class="stat">Set: SPM</span></h1>
-  <div class="sub">Search a card, see its image & page, then explore suggested **same-color synergies** and **alternate color pairs** to pivot in Draft.</div>
+  <div class="sub">Search a card, see its image & page, then explore suggested <b>same-color synergies</b> and <b>alternate color pairs</b> to pivot in Draft. Now with <b>localStorage</b> caching + saved picks.</div>
 </header>
 
 <main>
-  <!-- LEFT: Search + Results -->
+  <!-- LEFT: Search + Results + Saved -->
   <section class="card pad">
     <div class="searchbar">
-      <input id="q" type="search" placeholder="Search SPM by card name (e.g., 'Spider-UK', 'Aunt May', 'Morbius')" />
+      <input id="q" type="search" placeholder="Search SPM by card name (e.g., “Aunt May”, “Morbius”, “Spider-UK”)" />
       <button id="go">Search</button>
     </div>
-    <div class="row" style="margin-top:10px">
-      <button id="load" class="secondary" title="Preload the SPM set locally for faster suggestions">Preload full set</button>
-      <span id="loadStatus" class="muted"></span>
+    <div class="toolbar">
+      <button id="load" class="secondary" title="Preload SPM and cache to your browser">Preload full set</button>
+      <button id="clearCache" class="ghost" title="Remove cached set from this device">Clear cache</button>
+      <span id="loadStatus" class="muted">Cache: <span id="cacheState">checking…</span></span>
     </div>
+
+    <div class="bar-saved">
+      <strong>Saved:</strong>
+      <button id="openSaved" class="secondary">Open My List (<span id="savedCount">0</span>)</button>
+      <button id="clearSaved" class="ghost">Clear My List</button>
+    </div>
+    <div id="savedGallery" class="gal" style="margin-top:8px"></div>
+
     <div id="results" class="results"></div>
   </section>
 
   <!-- RIGHT: Details + Synergies -->
   <section class="card pad">
-    <div id="detailPlaceholder" class="muted">🔎 Pick a card to see its details, image, and synergy ideas.</div>
+    <div id="detailPlaceholder" class="muted">🔎 Pick a card to see its details, image, synergy ideas, and suggestions. Use “Save to My List” to bookmark it.</div>
     <div id="details" style="display:none">
       <div class="grid">
         <div class="imgwrap"><img id="cardImg" alt="Card image"></div>
@@ -76,6 +92,11 @@
           <div class="row" id="colorRow"></div>
           <div class="row" id="metaRow"></div>
           <div class="row" id="linksRow"></div>
+
+          <div class="row">
+            <button id="saveBtn" class="secondary">💾 Save to My List</button>
+            <button id="backBtn" class="ghost back-pill">⬅ Back to suggestions</button>
+          </div>
 
           <div class="sec-title">Same-color synergy ideas</div>
           <div id="sameColorList" class="list"></div>
@@ -97,272 +118,39 @@
 </main>
 
 <footer class="foot">
-  Data & images courtesy of <a href="https://scryfall.com/sets/spm" target="_blank" rel="noopener">Scryfall</a>. Set code & release info from Wizards/Scryfall (SPM). This helper is heuristic—edit the archetype guide inside the file to suit your table/meta.
+  Data & images courtesy of <a href="https://scryfall.com/sets/spm" target="_blank" rel="noopener">Scryfall</a>. Caches live in your browser (localStorage). Clear them with the buttons above.
 </footer>
 
 <script>
 /* -----------------------------
-   Config & tiny “AI” heuristics
+   Config & “AI” heuristics
 --------------------------------*/
-
-// Color icons for quick UI
 const COLOR_EMOJI = { W:"⚪", U:"🔵", B:"⚫", R:"🔴", G:"🟢" };
-
-// Quick archetype guide you can edit/tune
-// (These blurbs are safe heuristics; update as you gather real data.)
 const ARCHETYPES = {
-  "WU": {
-    name: "Azorius — Modifications / Evasive Tempo",
-    tip: "Prioritize cheap creatures that gain counters/equipment and efficient interaction to protect your board. Look for payoff creatures that reward modified stats and flyers that wear auras well."
-  },
-  "WG": {
-    name: "Selesnya — ETB Value / Web-Slinging",
-    tip: "Leverage bounce/‘web-slinging’ lines to recast ETB creatures. Draft sticky two-drops, token makers, and any card that rewards repeated ETBs."
-  },
-  "UB": {
-    name: "Dimir — Villains / Graveyard Value",
-    tip: "Card selection + recursion. Pick cheap interaction, looters/connive-style effects, and graveyard payoffs. Win through incremental advantage and bombs."
-  },
-  "BR": {
-    name: "Rakdos — Mayhem / Discard Aggro",
-    tip: "Curve out and turn discard into advantage. Prioritize cheap threats, removal, and cards that can be cast from graveyard or reward discarding."
-  },
-  "RG": {
-    name: "Gruul — Big Threats / Combat Pressure",
-    tip: "Ramp or trade early, then drop 4+ power threats. Pump/fight tricks push damage and keep the board clear."
-  }
+  "WU": { name:"Azorius — Modifications / Evasive Tempo",
+    tip:"Cheap creatures that gain counters/equipment plus efficient interaction. Flyers wear auras well." },
+  "WG": { name:"Selesnya — ETB Value / Web-Slinging",
+    tip:"Bounce/‘web-slinging’ lines to recast ETB creatures. Draft sticky 2-drops, token makers, repeatable ETBs." },
+  "UB": { name:"Dimir — Villains / Graveyard Value",
+    tip:"Card selection + recursion. Cheap interaction, looters, graveyard payoffs. Win via incremental advantage + bombs." },
+  "BR": { name:"Rakdos — Mayhem / Discard Aggro",
+    tip:"Curve out; turn discard into advantage. Cheap threats, removal, and cast-from-yard payoffs." },
+  "RG": { name:"Gruul — Big Threats / Combat Pressure",
+    tip:"Ramp/trade early, then drop 4+ power threats. Pump/fight tricks to push damage." }
 };
-
-// Lightweight mapping of “keywords → synergy tags”
 const KEYWORD_TAGS = [
-  { kw: /web-?sling/i, tag: "ETB/Bounce" },
-  { kw: /connive|draw.+discard|mayhem|flashback|from your graveyard/i, tag: "Loot/Graveyard" },
-  { kw: /\+1\/\+1 counter|modified/i, tag: "Counters/Modified" },
-  { kw: /flying|can’t be blocked/i, tag: "Evasion" },
-  { kw: /fight|damage to target creature/i, tag: "Removal/Fight" },
-  { kw: /double strike|trample|haste|riot/i, tag: "Aggression" }
+  { kw:/web-?sling/i, tag:"ETB/Bounce" },
+  { kw:/connive|draw.+discard|mayhem|flashback|from your graveyard/i, tag:"Loot/Graveyard" },
+  { kw:/\+1\/\+1 counter|modified/i, tag:"Counters/Modified" },
+  { kw:/flying|can’t be blocked|can't be blocked/i, tag:"Evasion" },
+  { kw:/fight|damage to target creature/i, tag:"Removal/Fight" },
+  { kw:/double strike|trample|haste|riot/i, tag:"Aggression" }
 ];
-
-// Which alt pairs to suggest per color identity (edit as you like)
-const PIVOTS = {
-  W: ["WU","WG"],
-  U: ["WU","UB"],
-  B: ["UB","BR"],
-  R: ["BR","RG"],
-  G: ["RG","WG"]
-};
-
-// In-memory index of the set for quick suggestions
-let SET_CACHE = [];       // all cards from SPM
-let NAME_INDEX = {};      // name → card
-let LOADED = false;
+const PIVOTS = { W:["WU","WG"], U:["WU","UB"], B:["UB","BR"], R:["BR","RG"], G:["RG","WG"] };
 
 /* -----------------------------
-   Scryfall helpers (SPM only)
+   Local state & storage keys
 --------------------------------*/
-const S = {
-  // Search by name (restricted to SPM)
-  searchByName: async (q) => {
-    const url = new URL("https://api.scryfall.com/cards/search");
-    // Use exact name if quoted, else fuzzy name search within SPM
-    const query = `set:spm ${q.includes('"') ? q : `name:${q}`}`;
-    url.searchParams.set("q", query);
-    const res = await fetch(url);
-    const json = await res.json();
-    return json.data || [];
-  },
-  // Load all cards in SPM (handles pagination)
-  loadSet: async () => {
-    const acc = [];
-    let url = "https://api.scryfall.com/cards/search?q=set%3Aspm&unique=prints&order=set";
-    while (url) {
-      const res = await fetch(url);
-      const json = await res.json();
-      acc.push(...(json.data||[]));
-      url = json.has_more ? json.next_page : null;
-    }
-    return acc;
-  }
-};
-
-/* -----------------------------
-   UI helpers
---------------------------------*/
-const $ = (sel) => document.querySelector(sel);
-const resultsEl = $("#results");
-const details = $("#details");
-const placeholder = $("#detailPlaceholder");
-
-function colorBadges(colors){
-  if (!colors || !colors.length) return `<span class="pill">Colorless</span>`;
-  return colors.map(c => `<span class="pill" title="${c}">${COLOR_EMOJI[c]||""} ${c}</span>`).join("");
-}
-
-function pairBadge(pair){
-  const txt = pair.split("").map(c=>COLOR_EMOJI[c]||c).join(" ");
-  return `<span class="pill" data-pair="${pair}" title="${ARCHETYPES[pair]?.name||pair}">${txt} ${pair}</span>`;
-}
-
-function lineClamp(s, n=160){
-  return s && s.length>n ? s.slice(0,n)+"…" : (s||"");
-}
-
-function renderResults(cards){
-  resultsEl.innerHTML = cards.map(c=>{
-    const img = (c.image_uris?.small) || (c.card_faces?.[0]?.image_uris?.small) || "";
-    return `
-      <div class="result" data-id="${c.id}">
-        <img class="thumb" src="${img}" alt="">
-        <div>
-          <div><strong>${c.name}</strong></div>
-          <div class="small">${(c.type_line||"").replace("—","— ")} · ${ (c.colors||c.color_identity||[]).join("") || "C" }</div>
-          <div class="small muted">${lineClamp(c.oracle_text, 90)}</div>
-        </div>
-      </div>
-    `;
-  }).join("");
-}
-
-function renderCard(card){
-  placeholder.style.display = "none";
-  details.style.display = "";
-
-  const img = (card.image_uris?.normal) || (card.card_faces?.[0]?.image_uris?.normal) || "";
-  const colors = card.colors && card.colors.length ? card.colors : (card.color_identity||[]);
-  const colorId = colors.join("");
-
-  $("#cardImg").src = img;
-  $("#cardName").textContent = card.name;
-
-  // color chips & meta
-  $("#colorRow").innerHTML = colorBadges(colors);
-  $("#metaRow").innerHTML = `
-    <span class="tag">${card.type_line||"—"}</span>
-    <span class="tag">Mana value: ${Number.isFinite(card.cmc) ? card.cmc : "—"}</span>
-    <span class="tag">Rarity: ${card.rarity||"—"}</span>
-  `;
-
-  // links
-  const scry = card.scryfall_uri;
-  $("#linksRow").innerHTML = `
-    <a href="${scry}" target="_blank" rel="noopener">Open on Scryfall ↗</a>
-  `;
-
-  // same-color synergy tags (keyword extraction)
-  const text = [card.oracle_text, ...(card.card_faces?.map(f=>f.oracle_text)||[])].filter(Boolean).join("\n");
-  const tags = KEYWORD_TAGS.filter(k=>k.kw.test(text)).map(k=>k.tag);
-  $("#sameColorList").innerHTML = tags.length
-    ? tags.map(t=>`<div class="tag">${t}</div>`).join("")
-    : `<span class="muted">No obvious keywords detected—consider your curve, removal count, and ETB value.</span>`;
-
-  // alternate color pairs (based on any single color in identity)
-  const suggestedPairs = Array.from(new Set(colors.flatMap(c => PIVOTS[c] || [])));
-  $("#altPairs").innerHTML = suggestedPairs.map(pairBadge).join("");
-
-  // archetype note (show first suggested pair if any)
-  const firstPair = suggestedPairs[0];
-  $("#archetypeNote").textContent = firstPair && ARCHETYPES[firstPair]
-    ? `${ARCHETYPES[firstPair].name}: ${ARCHETYPES[firstPair].tip}`
-    : "Pick a color pair above to see quick archetype notes.";
-
-  // suggestions: quick pull of on-theme cards from cache if available
-  suggestPickups(colors, tags, suggestedPairs[0]);
-}
-
-function suggestPickups(colors, tags, primaryPair){
-  const out = $("#suggestions");
-  out.innerHTML = `<span class="muted">Fetching suggestions…</span>`;
-  if (!LOADED || !SET_CACHE.length){
-    out.innerHTML = `<span class="muted">Tip: click “Preload full set” (left) for on-device synergy suggestions.</span>`;
-    return;
-  }
-
-  const wantTags = new Set(tags);
-  const wantColors = new Set(colors);
-
-  const score = (c) => {
-    let s = 0;
-    const text = [c.oracle_text, ...(c.card_faces?.map(f=>f.oracle_text)||[])].filter(Boolean).join("\n");
-    KEYWORD_TAGS.forEach(k => { if (k.kw.test(text) && wantTags.has(k.tag)) s += 2; });
-    // color overlap
-    const cset = new Set((c.colors && c.colors.length ? c.colors : c.color_identity)||[]);
-    cset.forEach(x => { if (wantColors.has(x)) s += 1; });
-
-    // slight bump if matches primary pair identity
-    if (primaryPair){
-      const pset = new Set(primaryPair.split(""));
-      let hits = 0; pset.forEach(x=>{ if (cset.has(x)) hits++; });
-      s += hits >= 2 ? 2 : hits;
-    }
-    // rarity tiebreaker
-    const r = {common:0, uncommon:1, rare:2, mythic:3}[c.rarity||"common"];
-    s += r * 0.25;
-    return s;
-  };
-
-  const picks = [...SET_CACHE]
-    .filter(c => c.set && c.set.toLowerCase() === "spm" && c.type_line && !/basic land/i.test(c.type_line))
-    .sort((a,b)=>score(b)-score(a))
-    .slice(0, 18);
-
-  out.innerHTML = picks.map(c=>{
-    const img = (c.image_uris?.small) || (c.card_faces?.[0]?.image_uris?.small) || "";
-    const cols = (c.colors && c.colors.length ? c.colors : c.color_identity)||[];
-    return `
-      <a class="pill" href="${c.scryfall_uri}" target="_blank" rel="noopener" title="${c.name}">
-        <img src="${img}" style="width:22px;height:30px;border-radius:4px;border:1px solid #2a3a51" alt="">
-        <span>${c.name}</span>
-        <span class="muted">${cols.join("")||"C"}</span>
-      </a>
-    `;
-  }).join("");
-}
-
-/* -----------------------------
-   Wire up UI
---------------------------------*/
-$("#go").addEventListener("click", async ()=>{
-  const q = $("#q").value.trim();
-  if (!q) return;
-  resultsEl.innerHTML = `<div class="muted" style="padding:10px">Searching…</div>`;
-  try{
-    const cards = await S.searchByName(q.includes('"') ? q : `"${q}"`); // prefer exact match first
-    renderResults(cards.length ? cards : await S.searchByName(q));
-  }catch(e){
-    resultsEl.innerHTML = `<div class="muted" style="padding:10px">Search failed. ${e}</div>`;
-  }
-});
-$("#q").addEventListener("keydown", e=>{ if(e.key==="Enter") $("#go").click(); });
-
-resultsEl.addEventListener("click", (e)=>{
-  const row = e.target.closest(".result");
-  if (!row) return;
-  const id = row.getAttribute("data-id");
-  const card = (SET_CACHE.find(c=>c.id===id)) || (window._lastResults||[]).find(c=>c.id===id);
-  if (card) renderCard(card);
-});
-
-$("#load").addEventListener("click", async ()=>{
-  $("#loadStatus").textContent = "Loading SPM set…";
-  try{
-    SET_CACHE = await S.loadSet();
-    LOADED = true;
-    NAME_INDEX = Object.fromEntries(SET_CACHE.map(c=>[c.name.toLowerCase(), c]));
-    $("#loadStatus").textContent = `Loaded ${SET_CACHE.length} cards.`;
-  }catch(e){
-    $("#loadStatus").textContent = "Load failed.";
-  }
-});
-
-// Store last search results so result click works even without preload
-(async function patchSearchCapture(){
-  const orig = S.searchByName;
-  S.searchByName = async (...args)=>{
-    const data = await orig(...args);
-    window._lastResults = data;
-    return data;
-  };
-})();
-</script>
-</body>
-</html>
+let SET_CACHE = [];
+let NAME_INDEX = {};
+let LOADED = false
