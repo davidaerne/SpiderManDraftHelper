@@ -4,11 +4,11 @@
   <meta charset="utf-8" />
   <title>Marvel’s Spider-Man Limited Helper (SPM)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="description" content="SPM Limited helper: search cards, see images/links, explore synergies, and save picks." />
+  <meta name="description" content="SPM Limited helper: search cards, see images/links, explore synergies, save picks, and multi-card filter." />
   <style>
     :root{
       --bg:#0b0f14; --panel:#121823; --muted:#93a0b0; --text:#e8edf5; --accent:#ff3b30; --chip:#1b2330; --line:#1f2a3a;
-      --card-ratio: 63/88; /* keep Magic card proportions everywhere */
+      --card-ratio: 63/88;
     }
     *{box-sizing:border-box}
     body{margin:0;background:var(--bg);color:var(--text);font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Helvetica,Arial}
@@ -28,50 +28,9 @@
     .results{max-height:60vh;overflow:auto;margin-top:10px;border-top:1px solid var(--line)}
     .result{display:flex;gap:10px;padding:10px 6px;border-bottom:1px solid var(--line);cursor:pointer}
     .result:hover{background:#0f1520}
-
-    /* keep aspect ratio on all images */
-    .thumb{
-      height:70px; width:auto; aspect-ratio:var(--card-ratio);
-      object-fit:contain; border-radius:8px; border:1px solid #2a3a51;
-    }
-    .imgwrap{
-      background:#0e141d;
-      border-radius:12px;
-      padding:8px;
-      border:1px solid #2a3a51;
-      display:grid;
-      place-items:center;
-      width:100%;             /* NEW: fit the grid column */
-      overflow:hidden;        /* guard against any overflow */
-    }
-    
-    /* Card image must scale within the column */
-    .imgwrap img{
-      max-height:64vh;
-      max-width:100%;         /* NEW: cap to column width (remove old 340px cap) */
-      height:auto;
-      width:auto;
-      aspect-ratio:var(--card-ratio);
-      object-fit:contain;
-      border-radius:10px;
-    }
-    .mini img{
-      height:40px; width:auto; aspect-ratio:var(--card-ratio);
-      object-fit:contain; border-radius:5px; border:1px solid #2a3a51;
-    }
-    .pillimg{
-      height:30px; width:auto; aspect-ratio:var(--card-ratio);
-      object-fit:contain; border-radius:4px; border:1px solid #2a3a51;
-    }
-
     .small{font-size:12px;color:var(--muted)}
     .pill{display:inline-flex;align-items:center;gap:6px;background:var(--chip);padding:6px 10px;border-radius:999px;font-size:12px;border:1px solid #2a3a51;margin:4px 6px 0 0;cursor:pointer}
-    .grid{
-      display:grid;
-      grid-template-columns: clamp(220px, 28vw, 360px) 1fr; /* was 240px 1fr */
-      gap:14px;
-      align-items:start;
-    }
+    .grid{display:grid;grid-template-columns: clamp(220px, 28vw, 360px) 1fr; gap:14px; align-items:start;}
     @media (max-width:980px){.grid{grid-template-columns:1fr}}
     .row{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0}
     a{color:#7cc7ff;text-decoration:none}
@@ -87,12 +46,24 @@
     .mini .x{margin-left:6px;border:1px solid #394b66;border-radius:6px;padding:2px 6px;font-size:11px;color:#b7c6d8;background:#182232;cursor:pointer}
     .bar-saved{display:flex;gap:8px;align-items:center;margin-top:10px}
     .back-pill{display:none}
+
+    /* image ratio fixes */
+    .thumb{height:70px;width:auto;aspect-ratio:var(--card-ratio);object-fit:contain;border-radius:8px;border:1px solid #2a3a51}
+    .imgwrap{background:#0e141d;border-radius:12px;padding:8px;border:1px solid #2a3a51;display:grid;place-items:center;width:100%;overflow:hidden}
+    .imgwrap img{max-height:64vh;max-width:100%;height:auto;width:auto;aspect-ratio:var(--card-ratio);object-fit:contain;border-radius:10px}
+    .mini img{height:40px;width:auto;aspect-ratio:var(--card-ratio);object-fit:contain;border-radius:5px;border:1px solid #2a3a51}
+    .pillimg{height:30px;width:auto;aspect-ratio:var(--card-ratio);object-fit:contain;border-radius:4px;border:1px solid #2a3a51}
+
+    /* Filter builder */
+    .filterbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+    .chip{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:#0f1622;border:1px solid #2a3a51}
+    .chip button{background:#182232;border:1px solid #2a3a51;border-radius:8px;padding:2px 6px;font-size:11px}
   </style>
 </head>
 <body>
 <header>
   <h1>Marvel’s Spider-Man Limited Helper <span class="stat">Set: SPM</span></h1>
-  <div class="sub">Search a card, see its image & page, then explore suggested <b>same-color synergies</b> and <b>alternate color pairs</b> to pivot in Draft. Now with <b>localStorage</b> caching + saved picks.</div>
+  <div class="sub">Search a card, see its image & page, explore <b>same-color synergies</b>, <b>alternate color pairs</b>, save picks, and use a <b>multi-card filter</b>. Mobile-friendly scroll to details.</div>
 </header>
 
 <main>
@@ -105,7 +76,7 @@
     <div class="toolbar">
       <button id="load" class="secondary" title="Preload SPM and cache to your browser">Preload full set</button>
       <button id="clearCache" class="ghost" title="Remove cached set from this device">Clear cache</button>
-      <span id="loadStatus" class="muted">Cache: <span id="cacheState">checking…</span></span>
+      <span id="loadStatus" class="muted"><span id="cacheState">Cache: checking…</span></span>
     </div>
 
     <div class="bar-saved">
@@ -115,12 +86,20 @@
     </div>
     <div id="savedGallery" class="gal" style="margin-top:8px"></div>
 
+    <div class="sec-title" style="margin-top:14px">Filter builder</div>
+    <div class="filterbar">
+      <button id="activateFilter" class="secondary">Activate Filter (0)</button>
+      <button id="clearFilter" class="ghost">Clear Filter</button>
+      <span class="muted">Build with “➕ Add to Filter” in the details panel. Active filter narrows suggestions and results.</span>
+    </div>
+    <div id="filterChips" class="row"></div>
+
     <div id="results" class="results"></div>
   </section>
 
   <!-- RIGHT: Details + Synergies -->
-  <section class="card pad">
-    <div id="detailPlaceholder" class="muted">🔎 Pick a card to see its details, image, synergy ideas, and suggestions. Use “Save to My List” to bookmark it.</div>
+  <section class="card pad" id="detailCard">
+    <div id="detailPlaceholder" class="muted">🔎 Pick a card to see details, image, “Top decks” links, synergy ideas, and suggestions. Use “Save to My List” or “➕ Add to Filter”.</div>
     <div id="details" style="display:none">
       <div class="grid">
         <div class="imgwrap"><img id="cardImg" alt="Card image"></div>
@@ -132,8 +111,12 @@
 
           <div class="row">
             <button id="saveBtn" class="secondary">💾 Save to My List</button>
+            <button id="filterBtn" class="ghost">➕ Add to Filter</button>
             <button id="backBtn" class="ghost back-pill">⬅ Back to suggestions</button>
           </div>
+
+          <div class="sec-title">Top decks (search)</div>
+          <div id="deckLinks" class="row"></div>
 
           <div class="sec-title">Same-color synergy ideas</div>
           <div id="sameColorList" class="list"></div>
@@ -155,7 +138,7 @@
 </main>
 
 <footer class="foot">
-  Data & images courtesy of <a href="https://scryfall.com/sets/spm" target="_blank" rel="noopener">Scryfall</a>. Caches live in your browser (localStorage). Clear them with the buttons above.
+  Data & images courtesy of <a href="https://scryfall.com/sets/spm" target="_blank" rel="noopener">Scryfall</a>. Caches live in your browser (localStorage).
 </footer>
 
 <script>
@@ -186,12 +169,13 @@ const KEYWORD_TAGS = [
 const PIVOTS = { W:["WU","WG"], U:["WU","UB"], B:["UB","BR"], R:["BR","RG"], G:["RG","WG"] };
 
 /* -----------------------------
-   Local state & storage keys
+   State & storage keys
 --------------------------------*/
 let SET_CACHE = [];
-let NAME_INDEX = {};
 let LOADED = false;
-const STACK = []; // for “Back to suggestions”
+let CURRENT_CARD = null;
+const STACK = []; // “Back to suggestions”
+const FILTER = []; // selected cards for narrowing
 const LS_SET = "spm_cache";
 const LS_SAVED = "spm_saved";
 
@@ -204,23 +188,15 @@ const savedCount  = $("#savedCount");
 const backBtn     = $("#backBtn");
 const cacheState  = $("#cacheState");
 const loadStatus  = $("#loadStatus");
+const filterChips = $("#filterChips");
+const activateFilterBtn = $("#activateFilter");
+const clearFilterBtn = $("#clearFilter");
+const detailCard = $("#detailCard");
 
-let CURRENT_CARD = null;
-
-/* -----------------------------
-   Robust storage detection
---------------------------------*/
 function storageOK(){
-  try{
-    const k="__test_spm__";
-    localStorage.setItem(k,"1");
-    localStorage.removeItem(k);
-    return true;
-  }catch(e){
-    return false; // blocked (Safari Private Mode, permissions, etc.)
-  }
+  try{ const k="__spm__"; localStorage.setItem(k,"1"); localStorage.removeItem(k); return true; }catch{ return false; }
 }
-let STORAGE_ENABLED = storageOK();
+const STORAGE_ENABLED = storageOK();
 
 /* -----------------------------
    Scryfall helpers (SPM only)
@@ -252,19 +228,18 @@ const S = {
 /* -----------------------------
    Render helpers
 --------------------------------*/
-function colorBadges(colors){
-  if (!colors || !colors.length) return `<span class="pill">Colorless</span>`;
-  return colors.map(c=>`<span class="pill" title="${c}">${COLOR_EMOJI[c]||""} ${c}</span>`).join("");
-}
-function pairBadge(pair){
-  const txt = pair.split("").map(c=>COLOR_EMOJI[c]||c).join(" ");
-  return `<span class="pill" data-pair="${pair}" title="${ARCHETYPES[pair]?.name||pair}">${txt} ${pair}</span>`;
-}
+function face(c, size="small"){ return (c.image_uris?.[size]) || (c.card_faces?.[0]?.image_uris?.[size]) || ""; }
 function lineClamp(s,n=160){ return s && s.length>n ? s.slice(0,n)+"…" : (s||""); }
-function face(c, size="small"){
-  return (c.image_uris?.[size]) || (c.card_faces?.[0]?.image_uris?.[size]) || "";
+function colorBadges(colors){ if(!colors||!colors.length) return `<span class="pill">Colorless</span>`; return colors.map(c=>`<span class="pill" title="${c}">${COLOR_EMOJI[c]||""} ${c}</span>`).join(""); }
+function pairBadge(pair){
+  const txt = pair.split("").map(c=>COLOR_EMOJI[c]||c).join(" "); return `<span class="pill" data-pair="${pair}" title="${ARCHETYPES[pair]?.name||pair}">${txt} ${pair}</span>`;
+}
+function synergyTagsFor(card){
+  const text = [card.oracle_text, ...(card.card_faces?.map(f=>f.oracle_text)||[])].filter(Boolean).join("\n");
+  return KEYWORD_TAGS.filter(k=>k.kw.test(text)).map(k=>k.tag);
 }
 
+/* results list */
 function renderResults(cards){
   resultsEl.innerHTML = cards.map(c=>`
     <div class="result" data-id="${c.id}">
@@ -278,61 +253,14 @@ function renderResults(cards){
   `).join("");
 }
 
-function renderCard(card, {pushStack=false}={}){
-  CURRENT_CARD = card;
-  placeholder.style.display="none"; details.style.display="";
-  const colors = card.colors && card.colors.length ? card.colors : (card.color_identity||[]);
-  $("#cardImg").src = face(card,'normal');
-  $("#cardName").textContent = card.name;
-  $("#colorRow").innerHTML = colorBadges(colors);
-  $("#metaRow").innerHTML = `
-    <span class="tag">${card.type_line||"—"}</span>
-    <span class="tag">Mana value: ${Number.isFinite(card.cmc) ? card.cmc : "—"}</span>
-    <span class="tag">Rarity: ${card.rarity||"—"}</span>
-  `;
-  $("#linksRow").innerHTML = `<a href="${card.scryfall_uri}" target="_blank" rel="noopener">Open on Scryfall ↗</a>`;
-
-  const text = [card.oracle_text, ...(card.card_faces?.map(f=>f.oracle_text)||[])].filter(Boolean).join("\n");
-  const tags = KEYWORD_TAGS.filter(k=>k.kw.test(text)).map(k=>k.tag);
-  $("#sameColorList").innerHTML = tags.length
-    ? tags.map(t=>`<div class="tag">${t}</div>`).join("")
-    : `<span class="muted">No obvious keywords detected—consider curve, removal, and ETB value.</span>`;
-
-  const suggestedPairs = Array.from(new Set(colors.flatMap(c => PIVOTS[c] || [])));
-  $("#altPairs").innerHTML = suggestedPairs.map(pairBadge).join("");
-  $("#archetypeNote").textContent = suggestedPairs[0] && ARCHETYPES[suggestedPairs[0]]
-    ? `${ARCHETYPES[suggestedPairs[0]].name}: ${ARCHETYPES[suggestedPairs[0]].tip}`
-    : "Pick a color pair above to see quick archetype notes.";
-
-  suggestPickups(colors, tags, suggestedPairs[0], card);
-
-  $("#saveBtn").onclick = ()=>saveCurrent(card);
-
-  if (pushStack) {
-    backBtn.style.display="inline-block";
-    backBtn.onclick = ()=>{
-      if (!STACK.length) return;
-      const prev = STACK.pop();
-      backBtn.style.display = STACK.length ? "inline-block" : "none";
-      renderCard(prev.card, {pushStack:false});
-      $("#suggestions").innerHTML = prev.suggestionsHTML;
-      wireSuggestionClicks();
-    };
-  } else {
-    backBtn.style.display = STACK.length ? "inline-block" : "none";
-  }
-}
-
+/* suggestions */
 function suggestionPill(c){
-  const img = face(c,'small');
-  const cols = (c.colors && c.colors.length ? c.colors : c.color_identity)||[];
+  const img = face(c,'small'); const cols = (c.colors && c.colors.length ? c.colors : c.color_identity)||[];
   return `
     <a class="pill suggestion" data-id="${c.id}" title="${c.name}">
-      <img class="pillimg" src="${img}" alt="">
-      <span>${c.name}</span>
+      <img class="pillimg" src="${img}" alt=""><span>${c.name}</span>
       <span class="muted">${cols.join("")||"C"}</span>
-    </a>
-  `;
+    </a>`;
 }
 function wireSuggestionClicks(){
   document.querySelectorAll(".suggestion").forEach(el=>{
@@ -347,50 +275,118 @@ function wireSuggestionClicks(){
   });
 }
 
+/* filter logic: candidate must share >=1 tag with EVERY filter card */
+function matchesFilter(candidate){
+  if (!FILTER.length) return true;
+  const candidateTags = new Set(synergyTagsFor(candidate));
+  return FILTER.every(f => {
+    const ftags = new Set(f.tags);
+    for (const t of ftags){ if (candidateTags.has(t)) return true; }
+    return false;
+  });
+}
+
+/* main suggestions */
 function suggestPickups(colors, tags, primaryPair, currentCard){
   const out = $("#suggestions");
-  if (!LOADED || !SET_CACHE.length){
-    out.innerHTML = `<span class="muted">Tip: click “Preload full set” for on-device synergy suggestions.</span>`;
-    return;
-  }
+  if (!LOADED || !SET_CACHE.length){ out.innerHTML = `<span class="muted">Tip: Preload the set for on-device suggestions.</span>`; return; }
+
   const wantTags = new Set(tags);
   const wantColors = new Set(colors);
+
   const score = (c)=>{
+    if (!matchesFilter(c)) return -999; // enforce filter
     let s = 0;
     const txt = [c.oracle_text, ...(c.card_faces?.map(f=>f.oracle_text)||[])].filter(Boolean).join("\n");
     KEYWORD_TAGS.forEach(k=>{ if (k.kw.test(txt) && wantTags.has(k.tag)) s += 2; });
     const cset = new Set((c.colors && c.colors.length ? c.colors : c.color_identity)||[]);
     cset.forEach(x=>{ if (wantColors.has(x)) s += 1; });
-    if (primaryPair){
-      const pset = new Set(primaryPair.split("")); let hits=0; pset.forEach(x=>{ if (cset.has(x)) hits++; });
-      s += hits >= 2 ? 2 : hits;
-    }
+    if (primaryPair){ const pset = new Set(primaryPair.split("")); let hits=0; pset.forEach(x=>{ if (cset.has(x)) hits++; }); s += hits>=2?2:hits; }
     const r = {common:0, uncommon:1, rare:2, mythic:3}[c.rarity||"common"]; s += r*0.25;
-    if (c.id === currentCard.id) s -= 10; // don't recommend the same card
+    if (c.id === currentCard.id) s -= 10;
     return s;
   };
+
   const picks = [...SET_CACHE]
     .filter(c => c.set && c.set.toLowerCase()==="spm" && c.type_line && !/basic land/i.test(c.type_line))
     .sort((a,b)=>score(b)-score(a))
     .slice(0, 18);
+
   out.innerHTML = picks.map(c=>suggestionPill(c)).join("");
   wireSuggestionClicks();
 }
 
+/* details */
+function renderCard(card, {pushStack=false}={}){
+  CURRENT_CARD = card;
+  placeholder.style.display="none"; details.style.display="";
+  const colors = card.colors && card.colors.length ? card.colors : (card.color_identity||[]);
+  $("#cardImg").src = face(card,'normal');
+  $("#cardName").textContent = card.name;
+  $("#colorRow").innerHTML = colorBadges(colors);
+  $("#metaRow").innerHTML = `
+    <span class="tag">${card.type_line||"—"}</span>
+    <span class="tag">Mana value: ${Number.isFinite(card.cmc) ? card.cmc : "—"}</span>
+    <span class="tag">Rarity: ${card.rarity||"—"}</span>
+  `;
+  $("#linksRow").innerHTML = `<a href="${card.scryfall_uri}" target="_blank" rel="noopener">Open on Scryfall ↗</a>`;
+
+  // top decks links (search)
+  const enc = encodeURIComponent(card.name);
+  const aether = `https://aetherhub.com/Decks/Search?text=${enc}`;
+  const gold = `https://www.mtggoldfish.com/deck_searches/create?utf8=%E2%9C%93&deck_search%5Bquery%5D=${enc}`;
+  $("#deckLinks").innerHTML = `
+    <a class="pill" href="${aether}" target="_blank" rel="noopener">Aetherhub search ↗</a>
+    <a class="pill" href="${gold}" target="_blank" rel="noopener">MTGGoldfish search ↗</a>
+  `;
+
+  const tags = synergyTagsFor(card);
+  $("#sameColorList").innerHTML = tags.length ? tags.map(t=>`<div class="tag">${t}</div>`).join("") : `<span class="muted">No obvious keywords detected—consider curve, removal, ETB value.</span>`;
+
+  const suggestedPairs = Array.from(new Set(colors.flatMap(c => PIVOTS[c] || [])));
+  $("#altPairs").innerHTML = suggestedPairs.map(pairBadge).join("");
+  $("#archetypeNote").textContent = suggestedPairs[0] && ARCHETYPES[suggestedPairs[0]]
+    ? `${ARCHETYPES[suggestedPairs[0]].name}: ${ARCHETYPES[suggestedPairs[0]].tip}`
+    : "Pick a color pair above to see quick archetype notes.";
+
+  suggestPickups(colors, tags, suggestedPairs[0], card);
+
+  // actions
+  $("#saveBtn").onclick = ()=>saveCurrent(card);
+  $("#filterBtn").onclick = ()=>addToFilter(card, tags);
+
+  // back
+  if (pushStack) {
+    backBtn.style.display="inline-block";
+    backBtn.onclick = ()=>{
+      if (!STACK.length) return;
+      const prev = STACK.pop();
+      backBtn.style.display = STACK.length ? "inline-block" : "none";
+      renderCard(prev.card, {pushStack:false});
+      $("#suggestions").innerHTML = prev.suggestionsHTML;
+      wireSuggestionClicks();
+    };
+  } else {
+    backBtn.style.display = STACK.length ? "inline-block" : "none";
+  }
+
+  // Mobile: ensure details are visible after tapping a result
+  setTimeout(()=>detailCard.scrollIntoView({behavior:"smooth", block:"start"}), 50);
+}
+
 /* -----------------------------
-   Saved list (localStorage)
+   Saved list
 --------------------------------*/
 function getSaved(){ try{ return JSON.parse(localStorage.getItem(LS_SAVED)||"[]"); }catch{ return []; } }
 function setSaved(list){
   if (STORAGE_ENABLED) localStorage.setItem(LS_SAVED, JSON.stringify(list));
-  savedCount.textContent = list.length;
+  $("#savedCount").textContent = list.length;
   renderSavedGallery(list);
 }
 function saveCurrent(card){
   const list = getSaved();
   if (list.some(x=>x.id===card.id)) return;
-  const entry = { id:card.id, name:card.name, img:face(card,'small'), colors:(card.colors||card.color_identity||[]), uri:card.scryfall_uri };
-  list.unshift(entry);
+  list.unshift({ id:card.id, name:card.name, img:face(card,'small'), colors:(card.colors||card.color_identity||[]), uri:card.scryfall_uri });
   setSaved(list);
 }
 function removeSaved(id){ setSaved(getSaved().filter(x=>x.id!==id)); }
@@ -398,13 +394,9 @@ function renderSavedGallery(list){
   savedGallery.innerHTML = list.map(x=>`
     <div class="mini" data-id="${x.id}">
       <img src="${x.img}" alt="">
-      <div>
-        <div style="font-size:12px">${x.name}</div>
-        <a href="${x.uri}" target="_blank" rel="noopener" class="muted" style="font-size:11px">Scryfall ↗</a>
-      </div>
+      <div><div style="font-size:12px">${x.name}</div><a href="${x.uri}" target="_blank" rel="noopener" class="muted" style="font-size:11px">Scryfall ↗</a></div>
       <button class="x" title="Remove">Remove</button>
-    </div>
-  `).join("");
+    </div>`).join("");
   document.querySelectorAll("#savedGallery .mini").forEach(div=>{
     const id = div.getAttribute("data-id");
     div.onclick = (e)=>{
@@ -416,54 +408,88 @@ function renderSavedGallery(list){
 }
 
 /* -----------------------------
-   Cache management (with errors)
+   Filter builder
 --------------------------------*/
-async function preloadAndCache(){
-  loadStatus.textContent = "Loading SPM set… (this may take a few seconds)";
-  try{
-    const data = await S.loadSet();
-    SET_CACHE = data; LOADED = true;
-    NAME_INDEX = Object.fromEntries(SET_CACHE.map(c=>[c.name.toLowerCase(), c]));
-    if (STORAGE_ENABLED){
-      localStorage.setItem(LS_SET, JSON.stringify(SET_CACHE));
-      cacheState.textContent = "present";
-    } else {
-      cacheState.textContent = "blocked (no storage)";
-    }
-    loadStatus.textContent = `Loaded ${SET_CACHE.length} cards${STORAGE_ENABLED?" (cached).":" (memory only)."}`;
-  }catch(err){
-    console.error(err);
-    loadStatus.textContent = `Load failed: ${err.message || err}`;
-    cacheState.textContent = "error";
-  }
+function renderFilterChips(){
+  filterChips.innerHTML = FILTER.map(f=>`
+    <span class="chip" data-id="${f.id}">
+      ${f.name}
+      <button title="remove">✕</button>
+    </span>
+  `).join("");
+  filterChips.querySelectorAll(".chip button").forEach(btn=>{
+    btn.onclick = (e)=>{
+      const id = e.target.closest(".chip").getAttribute("data-id");
+      const idx = FILTER.findIndex(x=>x.id===id);
+      if (idx>=0) FILTER.splice(idx,1);
+      activateFilterBtn.textContent = `Activate Filter (${FILTER.length})`;
+      renderFilterChips();
+      reapplyFilterUI();
+    };
+  });
 }
-function tryRestoreCache(){
-  if (!STORAGE_ENABLED){ cacheState.textContent = "blocked (no storage)"; return false; }
-  const saved = localStorage.getItem(LS_SET);
-  if (!saved){ cacheState.textContent = "empty"; return false; }
-  try{
-    SET_CACHE = JSON.parse(saved);
-    LOADED = true;
-    NAME_INDEX = Object.fromEntries(SET_CACHE.map(c=>[c.name.toLowerCase(), c]));
-    loadStatus.textContent = `Cache loaded: ${SET_CACHE.length} cards.`;
-    cacheState.textContent = "present";
-    return true;
-  }catch{
-    cacheState.textContent = "corrupt";
-    return false;
+function addToFilter(card, tags){
+  if (FILTER.some(f=>f.id===card.id)) return;
+  FILTER.push({ id:card.id, name:card.name, tags:[...tags] });
+  activateFilterBtn.textContent = `Activate Filter (${FILTER.length})`;
+  renderFilterChips();
+}
+function clearFilter(){ FILTER.length = 0; renderFilterChips(); activateFilterBtn.textContent = "Activate Filter (0)"; reapplyFilterUI(); }
+
+function filterResultsList(){
+  // If search box has text, show only matches that ALSO satisfy filter; if empty, show all cards that satisfy filter
+  const q = $("#q").value.trim().toLowerCase();
+  let pool = [...(window._lastResults||SET_CACHE)];
+  if (FILTER.length) pool = pool.filter(matchesFilter);
+  if (q) pool = pool.filter(c => c.name.toLowerCase().includes(q));
+  renderResults(pool.slice(0, 200));
+}
+
+function reapplyFilterUI(){
+  // recompute suggestions for current card
+  if (CURRENT_CARD){
+    const colors = CURRENT_CARD.colors && CURRENT_CARD.colors.length ? CURRENT_CARD.colors : (CURRENT_CARD.color_identity||[]);
+    const tags = synergyTagsFor(CURRENT_CARD);
+    const suggestedPairs = Array.from(new Set(colors.flatMap(c => PIVOTS[c] || [])));
+    suggestPickups(colors, tags, suggestedPairs[0], CURRENT_CARD);
   }
+  // recompute results list
+  filterResultsList();
 }
 
 /* -----------------------------
-   Wire up actions
+   Cache management
+--------------------------------*/
+async function preloadAndCache(){
+  loadStatus.textContent = "Loading SPM set…";
+  try{
+    const data = await S.loadSet();
+    SET_CACHE = data; LOADED = true;
+    if (STORAGE_ENABLED){ localStorage.setItem(LS_SET, JSON.stringify(SET_CACHE)); cacheState.textContent = "Cache loaded: "+SET_CACHE.length+" cards."; }
+    else { cacheState.textContent = "Storage blocked (private mode)"; }
+  }catch(err){
+    cacheState.textContent = "Load failed: "+(err.message||err);
+  }
+}
+function tryRestoreCache(){
+  if (!STORAGE_ENABLED){ cacheState.textContent = "Storage blocked (private mode)"; return false; }
+  const saved = localStorage.getItem(LS_SET);
+  if (!saved){ cacheState.textContent = "Cache: empty"; return false; }
+  try{ SET_CACHE = JSON.parse(saved); LOADED = true; cacheState.textContent = "Cache loaded: "+SET_CACHE.length+" cards."; return true; }
+  catch{ cacheState.textContent = "Cache: corrupt"; return false; }
+}
+
+/* -----------------------------
+   Wire up
 --------------------------------*/
 $("#go").addEventListener("click", async ()=>{
   const q = $("#q").value.trim();
-  if (!q) return;
   resultsEl.innerHTML = `<div class="muted" style="padding:10px">Searching…</div>`;
   try{
-    const cards = await S.searchByName(q.includes('"') ? q : `"${q}"`);
-    renderResults(cards.length ? cards : await S.searchByName(q));
+    const cards = q ? await S.searchByName(q.includes('"') ? q : `"${q}"`) : SET_CACHE;
+    window._lastResults = cards;
+    // If filter active, apply it to the visible list
+    (FILTER.length ? filterResultsList() : renderResults(cards));
   }catch(e){
     resultsEl.innerHTML = `<div class="muted" style="padding:10px">Search failed. ${e}</div>`;
   }
@@ -471,45 +497,25 @@ $("#go").addEventListener("click", async ()=>{
 $("#q").addEventListener("keydown", e=>{ if(e.key==="Enter") $("#go").click(); });
 
 resultsEl.addEventListener("click", (e)=>{
-  const row = e.target.closest(".result");
-  if (!row) return;
+  const row = e.target.closest(".result"); if (!row) return;
   const id = row.getAttribute("data-id");
   const card = (SET_CACHE.find(c=>c.id===id)) || (window._lastResults||[]).find(c=>c.id===id);
-  if (card){
-    STACK.length = 0; // reset nav stack on fresh open
-    renderCard(card);
-  }
+  if (card){ STACK.length = 0; renderCard(card); }
 });
 
 $("#load").addEventListener("click", preloadAndCache);
-$("#clearCache").addEventListener("click", ()=>{
-  if (STORAGE_ENABLED){
-    localStorage.removeItem(LS_SET);
-    cacheState.textContent = "empty";
-    loadStatus.textContent = "Cache cleared.";
-  }else{
-    loadStatus.textContent = "No localStorage available to clear.";
-    cacheState.textContent = "blocked (no storage)";
-  }
-});
+$("#clearCache").addEventListener("click", ()=>{ if (STORAGE_ENABLED){ localStorage.removeItem(LS_SET); cacheState.textContent = "Cache: cleared"; } else { cacheState.textContent="Storage blocked"; }});
 $("#openSaved").addEventListener("click", ()=>savedGallery.scrollIntoView({behavior:"smooth", block:"center"}));
 $("#clearSaved").addEventListener("click", ()=>setSaved([]));
+activateFilterBtn.addEventListener("click", reapplyFilterUI);
+clearFilterBtn.addEventListener("click", clearFilter);
 
 (function boot(){
-  // capture last results so clicks work without preload
+  // capture last results
   const orig = S.searchByName;
-  S.searchByName = async (...args)=>{
-    const data = await orig(...args);
-    window._lastResults = data;
-    return data;
-  };
+  S.searchByName = async (...args)=>{ const data = await orig(...args); window._lastResults = data; return data; };
 
-  // initial cache & saved state
-  if (!STORAGE_ENABLED){
-    cacheState.textContent = "blocked (no storage)";
-  } else if (!tryRestoreCache()){
-    if (cacheState.textContent === "checking…") cacheState.textContent = "empty";
-  }
+  tryRestoreCache();
   setSaved(STORAGE_ENABLED ? getSaved() : []);
 })();
 </script>
